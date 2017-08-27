@@ -1,0 +1,39 @@
+language: cpp
+compiler:
+  - gcc
+  - clang
+os:
+  - linux
+  - osx
+before_install:
+  # BUG(mtwilliams): This is going to break on OS X. Use a shell script instead?
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq make
+  - sudo apt-get install -qq gcc-multilib g++-multilib
+  - gem install ryb
+  - ryb gen ninja
+script:
+  # BUG(mtwilliams): Doesn't respect mangling of `ARCHITECTURE`.
+  - ninja loom_${CONFIGURATION}_${TRAVIS_OS_NAME}_${ARCHITECTURE}
+  - _build/bin/tests_${CONFIGURATION}_${TRAVIS_OS_NAME}_${ARCHITECTURE}
+rvm:
+  - 2.2.3
+env:
+  global:
+    - LINKAGE=static
+  matrix:
+    - CONFIGURATION=debug ARCHITECTURE=x86
+    - CONFIGURATION=release ARCHITECTURE=x86
+    - CONFIGURATION=debug ARCHITECTURE=x86_64
+    - CONFIGURATION=release ARCHITECTURE=x86_64
+  allow_failures:
+    - os: osx
+cache:
+  - apt
+  - bundler
+notifications:
+  email:
+    recipients:
+      - developers@origamicomet.com
+    on_success: change
+    on_failure: always
