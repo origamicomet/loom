@@ -521,12 +521,13 @@ static loom_task_t *loom_steal_a_task(void) {
           return task;
 
     #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86
-      const loom_bool_t offline = (~online & (1ul << v)) != 0;
+      const loom_bool_t draining = (offline & (1ul << v)) != 0;
     #elif LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86_64
-      const loom_bool_t offline = (~online & (1ull << v)) != 0;
+      const loom_bool_t draining = (offline & (1ull << v)) != 0;
     #endif
-      
-      if (offline)
+
+      // Race is fine as the newly onlined worker will pick up work.
+      if (draining)
         if (loom_work_queue_is_empty(S->queues[v]))
           // Drained all work from an offline worker's queue.
           loom_atomic_reset_native(&S->work, v);
@@ -537,7 +538,8 @@ static loom_task_t *loom_steal_a_task(void) {
 }
 
 static void loom_unblock_any_permitted(loom_task_t *task) {
-  if (loom_atomic_load_u32(&task->blocks) > 0) {
+  // Tasks should not be modified by other threads once scheduled, so no race.
+  if (task->blocks > 0) {
     loom_permit_t *permit = &task->permits[0];
 
     while (permit) {
