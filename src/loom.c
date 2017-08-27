@@ -1,7 +1,7 @@
 //===-- loom.c ------------------------------------------*- mode: C++11 -*-===//
 //
-//                            __                  
-//                           |  |   ___ ___ _____ 
+//                            __
+//                           |  |   ___ ___ _____
 //                           |  |__| . | . |     |
 //                           |_____|___|___|_|_|_|
 //
@@ -50,7 +50,7 @@ typedef struct loom_work_queue {
 
   loom_task_t *tasks;
 
-  loom_uint32_t size;  
+  loom_uint32_t size;
   loom_uint32_t size_minus_one;
 } loom_work_queue_t;
 
@@ -179,13 +179,13 @@ static void loom_free_list_free(loom_free_list_t *fl) {
 static void loom_free_list_push(loom_free_list_t *fl, loom_uint32_t entry) {
   while (1) {
     const loom_uint32_t prev = loom_atomic_load_u32(&fl->next);
-    
+
     loom_atomic_store_u32(&fl->entries[entry], prev);
 
     if (loom_atomic_cmp_and_xchg_u32(&fl->next, prev, entry) != prev)
       // Retry.
       continue;
-    
+
     return;
   }
 }
@@ -198,9 +198,9 @@ static loom_uint32_t loom_free_list_pop(loom_free_list_t *fl) {
     if (loom_atomic_cmp_and_xchg_u32(&fl->next, entry, next) != entry)
       // Retry.
       continue;
-    
+
     loom_assert_debug(entry != 0xffffffff);
-    
+
     return entry;
   }
 }
@@ -501,7 +501,7 @@ static loom_task_t *loom_steal_a_task(void) {
     if (!victims)
       // No work to steal.
       return NULL;
-    
+
     // Naively enumerating the work work queues introduces a bias toward
     // earlier work queues and will more than likely cause cascading starvation
     // of worker threads, degenerating scheduling into a free-for-all. To
@@ -667,7 +667,7 @@ static loom_uint32_t choose_number_of_workers(loom_int32_t workers) {
 
 void loom_initialize(const loom_options_t *options) {
   loom_assert_debug(options != NULL);
-  
+
   // Prevent double initialization.
   loom_assert_debug(S == NULL);
 
@@ -743,7 +743,7 @@ void loom_bring_up_workers(unsigned n) {
     S->workers[worker].thread = loom_thread_spawn(&loom_worker_thread,
                                                   (void *)&S->workers[worker],
                                                   &worker_thread_options);
-    
+
     S->n += 1;
   }
 
@@ -773,7 +773,7 @@ void loom_bring_down_workers(unsigned n) {
 
     // No longer any associated worker thread.
     S->workers[worker - 1].thread = NULL;
-    
+
     // Prevent shutdown if brought up again.
     loom_atomic_store_u32(&S->workers[worker - 1].shutdown, 0);
 
@@ -781,7 +781,7 @@ void loom_bring_down_workers(unsigned n) {
   }
 
   loom_event_unsignal(S->message);
-  
+
   loom_lock_release(S->lock);
 }
 
