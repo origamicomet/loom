@@ -859,6 +859,11 @@ void loom_kick_and_wait(loom_handle_t task) {
   loom_kick_and_wait_n(1, &task);
 }
 
+static loom_bool_t is_zero_yet(volatile loom_uint32_t *n) {
+  return (loom_atomic_load_u32(v) == 0)
+      && (loom_atomic_cmp_and_xchg_u32(&outstanding, 0, 0) == 0);
+}
+
 void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
   loom_uint32_t outstanding = n;
 
@@ -868,7 +873,7 @@ void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
     loom_submit_a_task(task);
   }
 
-  while (loom_atomic_load_u32(&outstanding) > 0)
+  while (!is_zero_yet(&outstanding))
     loom_thread_yield();
 }
 
@@ -886,7 +891,7 @@ void loom_kick_and_work_while_waiting_n(unsigned n,
     loom_submit_a_task(task);
   }
 
-  while (loom_atomic_load_u32(&outstanding) > 0)
+  while (!is_zero_yet(&outstanding))
     if (!loom_do_some_work())
       loom_thread_yield();
 }
