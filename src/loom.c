@@ -248,7 +248,7 @@ static loom_task_t *loom_task_pool_acquire(loom_task_pool_t *pool) {
 
 static void loom_task_pool_return(loom_task_pool_t *pool,
                                   loom_task_t *task) {
-  const loom_uint32_t index = (loom_size_t)(task - pool->tasks) / sizeof(loom_task_t);
+  const loom_uint32_t index = task - pool->tasks;
   loom_free_list_push(pool->freelist, index);
 }
 
@@ -796,7 +796,7 @@ static loom_handle_t task_to_handle(loom_task_t *task) {
   loom_handle_t handle;
 
 #if LOOM_CONFIGURATION == LOOM_CONFIGURATION_DEBUG
-  handle.index = (loom_uint32_t)(task - S->tasks->tasks) / sizeof(loom_task_t *);
+  handle.index = task - S->tasks->tasks;
   handle.id = task->id;
 #else
   handle.opaque = (void *)task;
