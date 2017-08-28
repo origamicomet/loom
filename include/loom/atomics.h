@@ -1,7 +1,7 @@
 //===-- loom/atomics.h ----------------------------------*- mode: C++11 -*-===//
 //
-//                            __                  
-//                           |  |   ___ ___ _____ 
+//                            __
+//                           |  |   ___ ___ _____
 //                           |  |__| . | . |     |
 //                           |_____|___|___|_|_|_|
 //
@@ -19,6 +19,7 @@
 
 #if LOOM_COMPILER == LOOM_COMPILER_MSVC
   #include <intrin.h>
+
   #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86 || \
       LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86_64
     #pragma intrinsic(_InterlockedIncrement)
@@ -26,6 +27,7 @@
     #pragma intrinsic(_InterlockedCompareExchange)
     #pragma intrinsic(_interlockedbittestandset)
     #pragma intrinsic(_interlockedbittestandreset)
+
     #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86_64
       #pragma intrinsic(_InterlockedIncrement64)
       #pragma intrinsic(_InterlockedDecrement64)
@@ -34,6 +36,8 @@
       #pragma intrinsic(_interlockedbittestandreset64)
     #endif
   #endif
+
+  #pragma intrinsic(_ReadWriteBarrier)
 #elif LOOM_COMPILER == LOOM_COMPILER_CLANG || \
       LOOM_COMPILER == LOOM_COMPILER_GCC
 #endif
@@ -41,6 +45,26 @@
 LOOM_BEGIN_EXTERN_C
 
 // NOTE(mtwilliams): Aligned loads and stores are always atomic on x86/x86_64.
+
+// PERF(mtwilliams): As of Visual Studo 2005, volatile implies acquire and
+// release semantics, which may be expensive on certain plaforms.
+
+#if LOOM_COMPILER == LOOM_COMPILER_MSVC
+  #define loom_atomic_acquire() _ReadWriteBarrier()
+  #define loom_atomic_release() _ReadWriteBarrier()
+  #define loom_atomic_fence() _ReadWriteBarrier()
+  #define loom_atomic_barrier() MemoryBarrier()
+#elif LOOM_COMPILER == LOOM_COMPILER_CLANG || \
+      LOOM_COMPILER == LOOM_COMPILER_GCC
+  #define loom_atomic_acquire() asm volatile("" ::: "memory")
+  #define loom_atomic_release() asm volatile("" ::: "memory")
+  #define loom_atomic_fence() asm volatile("" ::: "memory")
+  #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86
+    #define loom_atomic_barrier() asm volatile("lock; orl $0, (%%esp)" ::: "memory")
+  #elif LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86_64
+    #define loom_atomic_barrier() asm volatile("lock; orl $0, (%%rsp)" ::: "memory")
+  #endif
+#endif
 
 static LOOM_INLINE loom_uint32_t loom_atomic_load_u32(const volatile loom_uint32_t *m) {
 #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86 || \

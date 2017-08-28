@@ -82,6 +82,10 @@ static loom_uint32_t loom_work_queue_push(loom_work_queue_t *wq, loom_task_t *ta
   loom_assert_debug((bottom - top) <= wq->size);
 
   loom_atomic_store_ptr((void *volatile *)&wq->tasks[bottom & wq->size_minus_one], (void *)task);
+
+  // Ensure task is published prior to advertising.
+  loom_atomic_barrier();
+
   loom_atomic_store_u32(&wq->bottom, bottom + 1);
 
   return (bottom - top + 1);
@@ -89,9 +93,7 @@ static loom_uint32_t loom_work_queue_push(loom_work_queue_t *wq, loom_task_t *ta
 
 /// Tries to pop a task from @wq.
 static loom_task_t *loom_work_queue_pop(loom_work_queue_t *wq) {
-  const loom_uint32_t bottom = loom_atomic_load_u32(&wq->bottom) - 1;
-  loom_atomic_store_u32(&wq->bottom, bottom);
-
+  const loom_uint32_t bottom = loom_atomic_decr_u32(&wq->bottom);
   const loom_uint32_t top = loom_atomic_load_u32(&wq->top);
 
   if (top <= bottom) {
@@ -120,6 +122,9 @@ static loom_task_t *loom_work_queue_pop(loom_work_queue_t *wq) {
 /// Tries to steal a task from @wq.
 static loom_task_t *loom_work_queue_steal(loom_work_queue_t *wq) {
   const loom_uint32_t top = loom_atomic_load_u32(&wq->top);
+
+  loom_atomic_acquire();
+
   const loom_uint32_t bottom = loom_atomic_load_u32(&wq->bottom);
 
   if (top < bottom) {
@@ -516,7 +521,7 @@ static loom_task_t *loom_steal_a_task(void) {
       const unsigned v = (loom_ctz_native(victims) + (w - r)) % w;
 
       // Retry try a few times, in case of contention.
-      for (unsigned attempts = 0; attempts < 3; ++attempts) {
+      for (unsigned attempts = 0; attempts < 3; ++attempts)
         if (loom_task_t *task = loom_work_queue_steal(S->queues[v]))
           return task;
 
@@ -859,9 +864,9 @@ void loom_kick_and_wait(loom_handle_t task) {
   loom_kick_and_wait_n(1, &task);
 }
 
-static loom_bool_t is_zero_yet(volatile loom_uint32_t *n) {
+static loom_bool_t is_zero_yet(volatile loom_uint32_t *v) {
   return (loom_atomic_load_u32(v) == 0)
-      && (loom_atomic_cmp_and_xchg_u32(&outstanding, 0, 0) == 0);
+      && (loom_atomic_cmp_and_xchg_u32(v, 0, 0) == 0);
 }
 
 void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
