@@ -499,6 +499,7 @@ static loom_task_t *loom_steal_a_task(void) {
   // different order.
 
   while (1) {
+    // Race is fine as the newly onlined worker will pick up work.
     const loom_native_t online = loom_atomic_load_native(&S->online);
     const loom_native_t offline = ~online;
 
@@ -530,12 +531,11 @@ static loom_task_t *loom_steal_a_task(void) {
           return task;
 
     #if LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86
-      const loom_bool_t draining = (offline & (1ul << v)) != 0;
+      const loom_bool_t draining = ((offline & (1ul << v)) != 0) | (v == 0);
     #elif LOOM_ARCHITECTURE == LOOM_ARCHITECTURE_X86_64
-      const loom_bool_t draining = (offline & (1ull << v)) != 0;
+      const loom_bool_t draining = ((offline & (1ull << v)) != 0) | (v == 0);
     #endif
 
-      // Race is fine as the newly onlined worker will pick up work.
       if (draining)
         if (loom_work_queue_is_empty(S->queues[v]))
           // Drained all work from an offline worker's queue.
@@ -638,13 +638,13 @@ startup:
       if (loom_atomic_load_u32(&worker->shutdown))
         goto shutdown;
 
-      if (loom_task_t *task = loom_steal_a_task()) {
+      if (loom_task_t *task = loom_steal_a_task())
         loom_schedule_a_task(task);
-
-        if (!loom_work_queue_is_empty(Q))
-          // Work on our queue.
-          goto work_in_queue;
-      }
+      else if (!loom_work_queue_is_empty(Q))
+        // Work in our queue.
+        goto work_in_queue;
+      else
+        goto waiting;
     }
   }
 
@@ -873,14 +873,22 @@ static loom_bool_t is_zero_yet(volatile loom_uint32_t *v) {
       && (loom_atomic_cmp_and_xchg_u32(v, 0, 0) == 0);
 }
 
-void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
-  loom_uint32_t outstanding = n;
+static void kick(unsigned n, const loom_handle_t *tasks, loom_uint32_t *barrier) {
+  for (unsigned i = 0; i < n; ++i) {
+    loom_task_t *task = handle_to_task(tasks[i]);
+    task->barrier = barrier;
+  }
 
   for (unsigned i = 0; i < n; ++i) {
     loom_task_t *task = handle_to_task(tasks[i]);
-    task->barrier = &outstanding;
     loom_submit_a_task(task);
   }
+}
+
+void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
+  loom_uint32_t outstanding = n;
+
+  kick(n, tasks, &outstanding);
 
   while (!is_zero_yet(&outstanding))
     loom_thread_yield();
@@ -894,11 +902,7 @@ void loom_kick_and_work_while_waiting_n(unsigned n,
                                         const loom_handle_t *tasks) {
   loom_uint32_t outstanding = n;
 
-  for (unsigned i = 0; i < n; ++i) {
-    loom_task_t *task = handle_to_task(tasks[i]);
-    task->barrier = &outstanding;
-    loom_submit_a_task(task);
-  }
+  kick(n, tasks, &outstanding);
 
   while (!is_zero_yet(&outstanding))
     if (!loom_do_some_work())
@@ -911,8 +915,6 @@ loom_bool_t loom_do_some_work(void) {
   if (loom_task_t *task = loom_grab_a_task()) {
     loom_schedule_a_task(task);
     return true;
-  } else {
-    loom_atomic_reset_native(&S->work, 0);
   }
 
   if (loom_task_t *task = loom_steal_a_task()) {
