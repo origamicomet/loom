@@ -60,7 +60,7 @@ static loom_work_queue_t *loom_work_queue_create(loom_size_t size) {
 
   wq->top = wq->bottom = 0;
 
-  wq->tasks = (loom_task_t *)calloc(1, sizeof(loom_task_t));
+  wq->tasks = (loom_task_t *)calloc(size, sizeof(loom_task_t *));
 
   wq->size = size;
   wq->size_minus_one = size - 1;
