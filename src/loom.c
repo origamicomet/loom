@@ -461,6 +461,10 @@ static void loom_signal_availability_of_work(void) {
 }
 
 static void loom_submit_a_task(loom_task_t *task) {
+  if (loom_atomic_cmp_and_xchg_u32(&task->blockers, 0, 0xffffffff) != 0)
+    // Can't schedule yet. Should be picked up later.
+    return;
+
   const loom_uint32_t work = loom_work_queue_push(Q, task);
 
   if (work > 1) {
