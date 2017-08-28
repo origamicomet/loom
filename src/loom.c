@@ -448,7 +448,7 @@ static void loom_return_a_permit(loom_permit_t *permit) {
   const void *lower = (const void *)&S->permits->permits[0];
   const void *upper = (const void *)&S->permits->permits[S->permits->size - 1];
 
-  if ((address < lower) && (address > upper))
+  if ((address < lower) || (address > upper))
     // Ingore if embedded.
     return;
 
