@@ -894,12 +894,12 @@ void loom_kick_and_wait_n(unsigned n, const loom_handle_t *tasks) {
     loom_thread_yield();
 }
 
-void loom_kick_and_work_while_waiting(loom_handle_t task) {
-  loom_kick_and_work_while_waiting_n(1, &task);
+void loom_kick_and_do_work_while_waiting(loom_handle_t task) {
+  loom_kick_and_do_work_while_waiting_n(1, &task);
 }
 
-void loom_kick_and_work_while_waiting_n(unsigned n,
-                                        const loom_handle_t *tasks) {
+void loom_kick_and_do_work_while_waiting_n(unsigned n,
+                                           const loom_handle_t *tasks) {
   loom_uint32_t outstanding = n;
 
   kick(n, tasks, &outstanding);

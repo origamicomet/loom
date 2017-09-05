@@ -14,7 +14,7 @@ TODO:
 
 BUG:
 
-* Work queues will erroneously calculate depth due to integer overflow. 
+* Work queues will erroneously calculate depth due to integer overflow.
 
 FEATURE:
 

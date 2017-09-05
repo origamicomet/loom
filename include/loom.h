@@ -1,7 +1,7 @@
 //===-- loom.h ------------------------------------------*- mode: C++11 -*-===//
 //
-//                            __                  
-//                           |  |   ___ ___ _____ 
+//                            __
+//                           |  |   ___ ___ _____
 //                           |  |__| . | . |     |
 //                           |_____|___|___|_|_|_|
 //
@@ -125,7 +125,7 @@ struct loom_task {
 
 struct loom_handle {
 #if LOOM_CONFIGURATION == LOOM_CONFIGURATION_DEBUG
-  // We check for stales handles in debug builds to ease development.
+  // We check for stale handles in debug builds to ease development.
   loom_uint32_t index;
   loom_uint32_t id;
 #else
@@ -230,12 +230,12 @@ extern LOOM_PUBLIC
 
 /// \brief Kicks a task and does work while waiting for it to be completed.
 extern LOOM_PUBLIC
-  void loom_kick_and_work_while_waiting(loom_handle_t task);
+  void loom_kick_and_do_work_while_waiting(loom_handle_t task);
 
 /// \brief Kicks all tasks and does work while waiting for all to be completed.
 extern LOOM_PUBLIC
-  void loom_kick_and_work_while_waiting_n(unsigned n,
-                                          const loom_handle_t *tasks);
+  void loom_kick_and_do_work_while_waiting_n(unsigned n,
+                                             const loom_handle_t *tasks);
 
 /// \brief Schedules an available task, if there are any.
 /// \warning You should only call this from the main thread!
