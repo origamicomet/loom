@@ -830,7 +830,7 @@ loom_handle_t loom_describe(loom_kernel_fn kernel,
   task->work.cpu.kernel = kernel;
   task->work.cpu.data = data;
 
-  memset((void *)&task->permits[0], 0, sizeof(task->permits));
+  memset((void *)&task->permits[0], 0, LOOM_EMBEDDED_PERMITS * sizeof(loom_permit_t));
 
   task->blocks = 0;
   task->blockers = 0;
@@ -860,8 +860,10 @@ void loom_kick(loom_handle_t task) {
 }
 
 void loom_kick_n(unsigned n, const loom_handle_t *tasks) {
-  for (unsigned i = 0; i < n; ++i)
-    loom_submit_a_task(handle_to_task(tasks[i]));
+  for (unsigned i = 0; i < n; ++i) {
+    loom_task_t *task = handle_to_task(tasks[i]);
+    loom_submit_a_task(task);
+  }
 }
 
 void loom_kick_and_wait(loom_handle_t task) {
