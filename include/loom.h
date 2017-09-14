@@ -206,6 +206,9 @@ extern LOOM_PUBLIC
   void loom_bring_down_workers(unsigned n);
 
 extern LOOM_PUBLIC
+  loom_handle_t loom_empty(loom_uint32_t flags);
+
+extern LOOM_PUBLIC
   loom_handle_t loom_describe(loom_kernel_fn kernel,
                               void *data,
                               loom_uint32_t flags);

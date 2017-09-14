@@ -827,6 +827,23 @@ static loom_task_t *handle_to_task(loom_handle_t handle) {
 #endif
 }
 
+loom_handle_t loom_empty(loom_uint32_t flags) {
+  loom_task_t *task = loom_acquire_a_task();
+
+  task->flags = flags;
+
+  task->work.kind = LOOM_WORK_NONE;
+
+  memset((void *)&task->permits[0], 0, LOOM_EMBEDDED_PERMITS * sizeof(loom_permit_t));
+
+  task->blocks = 0;
+  task->blockers = 0;
+
+  task->barrier = NULL;
+
+  return task_to_handle(task);
+}
+
 loom_handle_t loom_describe(loom_kernel_fn kernel,
                             void *data,
                             loom_uint32_t flags) {
