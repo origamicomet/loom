@@ -48,7 +48,7 @@ typedef struct loom_work_queue {
   loom_uint32_t top;
   loom_uint32_t bottom;
 
-  loom_task_t *tasks;
+  loom_task_t **tasks;
 
   loom_uint32_t size;
   loom_uint32_t size_minus_one;
@@ -60,7 +60,7 @@ static loom_work_queue_t *loom_work_queue_create(loom_size_t size) {
 
   wq->top = wq->bottom = 0;
 
-  wq->tasks = (loom_task_t *)calloc(size, sizeof(loom_task_t *));
+  wq->tasks = (loom_task_t **)calloc(size, sizeof(loom_task_t *));
 
   wq->size = size;
   wq->size_minus_one = size - 1;
@@ -81,7 +81,7 @@ static loom_uint32_t loom_work_queue_push(loom_work_queue_t *wq, loom_task_t *ta
   // Make sure we won't overflow the dequeue.
   loom_assert_debug((bottom - top) <= wq->size);
 
-  loom_atomic_store_ptr((void *volatile *)&wq->tasks[bottom & wq->size_minus_one], (void *)task);
+  loom_atomic_store_ptr((void *volatile *)&wq->tasks[bottom % wq->size], (void *)task);
 
   // Ensure task is published prior to advertising.
   loom_atomic_barrier();
@@ -99,7 +99,7 @@ static loom_task_t *loom_work_queue_pop(loom_work_queue_t *wq) {
   if (top <= bottom) {
     // Non-empty.
     loom_task_t *task =
-      (loom_task_t *)loom_atomic_load_ptr((void *volatile *)&wq->tasks[bottom & wq->size_minus_one]);
+      (loom_task_t *)loom_atomic_load_ptr((void *volatile *)&wq->tasks[bottom % wq->size]);
 
     if (top != bottom)
       // Still more than one task left in the queue.
@@ -130,7 +130,7 @@ static loom_task_t *loom_work_queue_steal(loom_work_queue_t *wq) {
   if (top < bottom) {
     // Non-empty.
     loom_task_t *task =
-      (loom_task_t *)loom_atomic_load_ptr((void *volatile *)&wq->tasks[top & wq->size_minus_one]);
+      (loom_task_t *)loom_atomic_load_ptr((void *volatile *)&wq->tasks[top % wq->size]);
 
     if (loom_atomic_cmp_and_xchg_u32(&wq->top, top, top + 1) != top)
       // Lost to a pop or another steal.
