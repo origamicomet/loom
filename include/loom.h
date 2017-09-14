@@ -133,6 +133,8 @@ struct loom_handle {
 #endif
 };
 
+extern const loom_handle_t LOOM_INVALID_HANDLE;
+
 typedef void (*loom_prologue_fn)(const loom_task_t *task,
                                  void *context);
 

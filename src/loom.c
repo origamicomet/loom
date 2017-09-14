@@ -31,6 +31,14 @@
 
 LOOM_BEGIN_EXTERN_C
 
+const loom_handle_t LOOM_INVALID_HANDLE = {
+#if LOOM_CONFIGURATION == LOOM_CONFIGURATION_DEBUG
+  0xffffffff, 0xffffffff
+#else
+  NULL
+#endif
+};
+
 /// \brief A lock-free, single-producer, multiple-consumer, doubly-ended queue
 /// of tasks.
 ///
